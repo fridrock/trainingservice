@@ -26,7 +26,9 @@ func main() {
 	ch, err := conn.Channel()
 	failOnError(err, "Failed to open a channel")
 	defer ch.Close()
-
+	ch1, err := conn.Channel()
+	failOnError(err, "failed to open a channel 2")
+	defer ch1.Close()
 	err = ch.ExchangeDeclare(
 		"ex_group",
 		"direct",
@@ -56,19 +58,32 @@ func main() {
 	if err != nil {
 		failOnError(err, "error binding queue")
 	}
+	msgs1, err := ch1.Consume(
+		"update",
+		"",
+		true,
+		false,
+		false,
+		false,
+		nil,
+	)
 	msgs, err := ch.Consume(
-		q.Name, // queue
-		"",     // consumer
-		true,   // auto-ack
-		false,  // exclusive
-		false,  // no-local
-		false,  // no-wait
-		nil,    // args
+		"create", // queue
+		"",       // consumer
+		true,     // auto-ack
+		false,    // exclusive
+		false,    // no-local
+		false,    // no-wait
+		nil,      // args
 	)
 	failOnError(err, "Failed to register a consumer")
 
 	var forever chan struct{}
-
+	go func() {
+		for d := range msgs1 {
+			log.Printf("received another queue: %s", d.Body)
+		}
+	}()
 	go func() {
 		for d := range msgs {
 			log.Printf("Received a message: %s", d.Body)
