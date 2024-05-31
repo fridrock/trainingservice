@@ -3,93 +3,68 @@ package main
 import (
 	"log"
 
+	rs "github.com/fridrock/rabbitsimplier"
+	"github.com/fridrock/trainingservice/db/stores"
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
-type BrokerMessageHandler interface {
-	Handle(message string)
+// defining answer event
+type ExGroupCreatedEvent struct {
+	Event string `json:"event"`
+	Text  string `json:"text"`
 }
 
-func failOnError(err error, msg string) {
+func setupConfigurer() *rs.RConfigurer {
+	brc := &rs.RConfigurer{}
+	err := brc.Configure(rs.Config{
+		Username: "guest",
+		Password: "guest",
+		Host:     "localhost",
+	})
 	if err != nil {
-		log.Panicf("%s: %s", msg, err)
+		log.Fatal("error creating connection to rabbitmq")
 	}
+	return brc
 }
 
+func setupConsumer(configurer rs.Configurer, producer rs.Producer) *rs.RConsumer {
+	consumer := &rs.RConsumer{}
+	err := consumer.CreateChannel(configurer.GetConnection())
+	if err != nil {
+		log.Fatal("error creating channel for consumer")
+	}
+	q, err := consumer.CreateQueue()
+	if err != nil {
+		log.Fatal("error creating queue")
+	}
+	consumer.SetBinding(q, "trainings.exgroup.#", "sport_bot")
+	dispatcher := rs.NewRDispacher()
+	dispatcher.RegisterHandler("trainings.exgroup.create", rs.NewHandlerFunc(func(msg amqp.Delivery) {
+		_ = stores.Hi{}
+
+	}))
+	consumer.RegisterDispatcher(q, &dispatcher)
+	return consumer
+}
+
+func setupProducer(brc rs.Configurer) *rs.RProducer {
+	brProducer := &rs.RProducer{}
+	err := brProducer.CreateChannel(brc.GetConnection())
+	if err != nil {
+		log.Fatal("error creating channel for producer")
+	}
+	return brProducer
+}
 func main() {
-	//Connection to rabbitmq
-	conn, err := amqp.Dial("amqp://guest:guest@localhost:5672/")
-	failOnError(err, "Failed to connect to RabbitMQ")
-	defer conn.Close()
-
-	//AMQP Channel for communication
-	ch, err := conn.Channel()
-	failOnError(err, "Failed to open a channel")
-	defer ch.Close()
-	ch1, err := conn.Channel()
-	failOnError(err, "failed to open a channel 2")
-	defer ch1.Close()
-	err = ch.ExchangeDeclare(
-		"ex_group",
-		"direct",
-		true,
-		false,
-		false,
-		false,
-		nil,
-	)
-	//declaring queue for listening
-	q, err := ch.QueueDeclare(
-		"create", // name
-		false,    // durable
-		false,    // delete when unused
-		false,    // exclusive
-		false,    // no-wait
-		nil,      // arguments
-	)
-	failOnError(err, "Failed to declare a queue")
-	err = ch.QueueBind(
-		q.Name,
-		"create",
-		"ex_group",
-		false,
-		nil,
-	)
-	if err != nil {
-		failOnError(err, "error binding queue")
-	}
-	msgs1, err := ch1.Consume(
-		"update",
-		"",
-		true,
-		false,
-		false,
-		false,
-		nil,
-	)
-	msgs, err := ch.Consume(
-		"create", // queue
-		"",       // consumer
-		true,     // auto-ack
-		false,    // exclusive
-		false,    // no-local
-		false,    // no-wait
-		nil,      // args
-	)
-	failOnError(err, "Failed to register a consumer")
-
+	brc := setupConfigurer()
+	//setting up configurer
+	defer brc.Stop()
+	brProducer := setupProducer(brc)
+	defer brProducer.Stop()
+	brConsumer := setupConsumer(brc, brProducer)
+	defer brConsumer.Stop()
+	//infinite work of service
 	var forever chan struct{}
-	go func() {
-		for d := range msgs1 {
-			log.Printf("received another queue: %s", d.Body)
-		}
-	}()
-	go func() {
-		for d := range msgs {
-			log.Printf("Received a message: %s", d.Body)
-		}
-	}()
-
 	log.Printf(" [*] Waiting for messages. To exit press CTRL+C")
 	<-forever
 }
