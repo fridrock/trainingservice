@@ -2,11 +2,43 @@ package main
 
 import (
 	"log"
+	"log/slog"
 
 	rs "github.com/fridrock/rabbitsimplier"
-	"github.com/fridrock/trainingservice/db/stores"
 	amqp "github.com/rabbitmq/amqp091-go"
 )
+
+//test bd
+// conn := core.CreateConnection()
+// egs := stores.NewEGS(conn)
+// _, err = egs.FindById(1)
+// if err != nil {
+// 	slog.Error(err.Error())
+// }
+// _, err = egs.FindByName("hi")
+// if err != nil {
+// 	slog.Error(err.Error())
+// }
+// exg := stores.ExGroup{
+// 	Name:   "hi",
+// 	UserId: 1,
+// }
+// savedId, err := egs.Save(exg)
+// if err != nil {
+// 	slog.Error(err.Error())
+// }
+// fmt.Println(savedId)
+// res, err := egs.FindById(savedId)
+// if err != nil {
+// 	slog.Error(err.Error())
+// }
+// fmt.Println(res)
+// res, err := egs.FindByName("hi")
+// if err != nil {
+// 	slog.Error(err.Error())
+// }
+// fmt.Println(res)
+//
 
 // defining answer event
 type ExGroupCreatedEvent struct {
@@ -38,10 +70,10 @@ func setupConsumer(configurer rs.Configurer, producer rs.Producer) *rs.RConsumer
 		log.Fatal("error creating queue")
 	}
 	consumer.SetBinding(q, "trainings.exgroup.#", "sport_bot")
+
 	dispatcher := rs.NewRDispacher()
 	dispatcher.RegisterHandler("trainings.exgroup.create", rs.NewHandlerFunc(func(msg amqp.Delivery) {
-		_ = stores.Hi{}
-
+		slog.Info("trainings.exgroup.create event")
 	}))
 	consumer.RegisterDispatcher(q, &dispatcher)
 	return consumer
