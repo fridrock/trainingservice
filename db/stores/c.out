@@ -1,0 +1,20 @@
+mode: set
+github.com/fridrock/trainingservice/db/stores/exgroupstore.go:37.33,41.2 1 1
+github.com/fridrock/trainingservice/db/stores/exgroupstore.go:43.53,48.2 4 1
+github.com/fridrock/trainingservice/db/stores/exgroupstore.go:50.52,55.2 4 1
+github.com/fridrock/trainingservice/db/stores/exgroupstore.go:57.57,62.2 4 1
+github.com/fridrock/trainingservice/db/stores/exgroupstore.go:64.43,67.16 3 1
+github.com/fridrock/trainingservice/db/stores/exgroupstore.go:67.16,69.3 1 0
+github.com/fridrock/trainingservice/db/stores/exgroupstore.go:70.2,71.16 2 1
+github.com/fridrock/trainingservice/db/stores/exgroupstore.go:71.16,73.3 1 0
+github.com/fridrock/trainingservice/db/stores/exgroupstore.go:74.2,74.12 1 1
+github.com/fridrock/trainingservice/db/stores/exgroupstore.go:74.12,76.3 1 1
+github.com/fridrock/trainingservice/db/stores/exgroupstore.go:77.2,77.12 1 1
+github.com/fridrock/trainingservice/db/stores/exgroupstore.go:80.53,83.16 3 1
+github.com/fridrock/trainingservice/db/stores/exgroupstore.go:83.16,85.3 1 0
+github.com/fridrock/trainingservice/db/stores/exgroupstore.go:86.2,87.16 2 1
+github.com/fridrock/trainingservice/db/stores/exgroupstore.go:87.16,89.3 1 0
+github.com/fridrock/trainingservice/db/stores/exgroupstore.go:90.2,90.12 1 1
+github.com/fridrock/trainingservice/db/stores/exgroupstore.go:90.12,92.3 1 1
+github.com/fridrock/trainingservice/db/stores/exgroupstore.go:93.2,93.12 1 1
+github.com/fridrock/trainingservice/db/stores/exgroupstore.go:97.62,102.2 4 1

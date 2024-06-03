@@ -165,12 +165,23 @@ func TestEGSDeleteById(t *testing.T) {
 }
 
 func TestEGSUpdate(t *testing.T) {
+	//negative case
+	updatedExGroup := ExGroup{
+		Name:   "Updated",
+		UserId: 3,
+		Id:     0,
+	}
+	err := egs.Update(updatedExGroup)
+	if err != nil && err != NotUpdated {
+		t.Error(err)
+	}
+
 	//positive case
 	result, err := createDefaultExGroup()
 	if err != nil {
 		t.Error("error creating exgroup")
 	}
-	updatedExGroup := ExGroup{
+	updatedExGroup = ExGroup{
 		Name:   "Updated",
 		UserId: 3,
 		Id:     result,
