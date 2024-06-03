@@ -1,9 +1,17 @@
 package stores
 
-import "github.com/jmoiron/sqlx"
+import (
+	"errors"
+
+	"github.com/jmoiron/sqlx"
+)
+
+var (
+	NotDeleted = errors.New("no rows deleted")
+	NotUpdated = errors.New("no rows updated")
+)
 
 // ExGroup struct that is entity for exercise_groups table
-//
 type ExGroup struct {
 	Id     int64  `db:"id"`
 	UserId int64  `db:"user_id"`
@@ -11,7 +19,6 @@ type ExGroup struct {
 }
 
 // ExGroupStore - interface which contains all methods for working with exercise_groups table
-//
 type ExGroupStore interface {
 	Save(ExGroup) (int64, error)
 	FindById(int64) (ExGroup, error)
@@ -22,13 +29,11 @@ type ExGroupStore interface {
 }
 
 // EGS - standard realization of ExGroupInterface
-//
 type EGS struct {
 	conn *sqlx.DB
 }
 
 // NewEGS - function that creates realization for ExGroupStore interface
-//
 func NewEGS(conn *sqlx.DB) *EGS {
 	return &EGS{
 		conn: conn,
@@ -58,14 +63,35 @@ func (egs EGS) FindByName(name string) (ExGroup, error) {
 
 func (egs EGS) DeleteById(id int64) error {
 	q := `DELETE FROM exercise_groups WHERE id=$1`
-	_, err := egs.conn.Exec(q, id)
-	return err
+	res, err := egs.conn.Exec(q, id)
+	if err != nil {
+		return err
+	}
+	r, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if r == 0 {
+		return NotDeleted
+	}
+	return nil
 }
 
 func (egs EGS) Update(updatedExGroup ExGroup) error {
 	q := `UPDATE exercise_groups SET name=$1, user_id=$2 WHERE id=$3`
-	_, err := egs.conn.Exec(q, updatedExGroup.Name, updatedExGroup.UserId, updatedExGroup.Id)
-	return err
+	res, err := egs.conn.Exec(q, updatedExGroup.Name, updatedExGroup.UserId, updatedExGroup.Id)
+	if err != nil {
+		return err
+	}
+	r, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if r == 0 {
+		return NotUpdated
+	}
+	return nil
+
 }
 
 func (egs EGS) FindByUserId(userId int64) ([]ExGroup, error) {
