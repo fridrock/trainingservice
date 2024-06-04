@@ -123,7 +123,7 @@ func TestEGSFindById(t *testing.T) {
 
 func TestEGSFindByName(t *testing.T) {
 	//negative case
-	_, err := egs.FindByName("Nosuchname")
+	_, err := egs.FindByName(defaultExGroup.UserId, "Nosuchname")
 	if err != nil && err != sql.ErrNoRows {
 		t.Error("error, while trying to find unexisting exgroup")
 	}
@@ -132,7 +132,7 @@ func TestEGSFindByName(t *testing.T) {
 	if err != nil {
 		t.Fatal("error saving exgroup")
 	}
-	found, err := egs.FindByName("BodyBack")
+	found, err := egs.FindByName(defaultExGroup.UserId, defaultExGroup.Name)
 	if err != nil {
 		t.Fatalf("error finding exgroup by name")
 	}
@@ -157,6 +157,27 @@ func TestEGSDeleteById(t *testing.T) {
 		t.Errorf("error deleting exgroup: %s", err.Error())
 	}
 	found, err := egs.FindById(result)
+	if err != nil && err != sql.ErrNoRows {
+		t.Errorf("found some exgroup after deletion: %#v", &found)
+	}
+
+	t.Cleanup(clearTable)
+}
+
+func TestEGSDeleteByName(t *testing.T) {
+	//negative case
+	err := egs.DeleteByName(1, "NoSuchExGroup")
+	if err != nil && err != NotDeleted {
+		t.Error(err)
+	}
+	//positive case
+	createDefaultExGroup()
+	err = egs.DeleteByName(defaultExGroup.UserId, defaultExGroup.Name)
+	if err != nil {
+		t.Errorf("error deleting exgroup: %s", err.Error())
+	}
+	found, err := egs.FindByName(defaultExGroup.UserId, defaultExGroup.Name)
+
 	if err != nil && err != sql.ErrNoRows {
 		t.Errorf("found some exgroup after deletion: %#v", &found)
 	}
@@ -199,7 +220,40 @@ func TestEGSUpdate(t *testing.T) {
 	}
 	t.Cleanup(clearTable)
 }
-
+func TestEGSUpdateByName(t *testing.T) {
+	//negative case
+	updatedExGroup := ExGroup{
+		Name:   "Updated",
+		UserId: 3,
+		Id:     0,
+	}
+	err := egs.UpdateByName(updatedExGroup.UserId, "NoSuchGroup", updatedExGroup)
+	if err != nil && err != NotUpdated {
+		t.Error(err)
+	}
+	//positive case
+	result, err := createDefaultExGroup()
+	if err != nil {
+		t.Error("error creating exgroup")
+	}
+	updatedExGroup = ExGroup{
+		Name:   "Updated",
+		UserId: 3,
+		Id:     result,
+	}
+	err = egs.UpdateByName(defaultExGroup.UserId, defaultExGroup.Name, updatedExGroup)
+	if err != nil {
+		t.Fatal(err)
+	}
+	found, err := egs.FindByName(updatedExGroup.UserId, updatedExGroup.Name)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if diff := cmp.Diff(found, updatedExGroup); diff != "" {
+		t.Fatal(diff)
+	}
+	t.Cleanup(clearTable)
+}
 func TestFindByUserId(t *testing.T) {
 	//negative case
 	_, err := egs.FindByUserId(2)
