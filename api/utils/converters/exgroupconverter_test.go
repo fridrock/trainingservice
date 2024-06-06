@@ -33,13 +33,20 @@ func TestExGroupConverter(t *testing.T) {
 	}
 }
 
-func TestParseDeleteRequest(t *testing.T) {
+func TestParseExGroupProperties(t *testing.T) {
+	//positive case
 	encoded := `{"user_id":3,"name":"Back"}`
-	deleteUserId, deleteGroupName, err := ParseDeleteRequest([]byte(encoded))
+	deleteUserId, deleteGroupName, err := ParseExGroupProperties([]byte(encoded))
 	if err != nil {
 		t.Error(err)
 	}
 	if deleteUserId != 3 || deleteGroupName != "Back" {
 		t.Error("got wrong id")
+	}
+	//negative case
+	encoded = `{"user_id":2}`
+	deleteUserId, deleteGroupName, err = ParseExGroupProperties([]byte(encoded))
+	if err == nil || deleteUserId != 0 || deleteGroupName != "" {
+		t.Error("no error with empty field name")
 	}
 }

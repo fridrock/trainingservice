@@ -2,9 +2,15 @@ package converters
 
 import (
 	"encoding/json"
+	"errors"
 
 	"github.com/fridrock/trainingservice/db/stores"
 )
+
+type ExGroupPropeties struct {
+	UserId int64  `json:"user_id"`
+	Name   string `json:"name"`
+}
 
 func ExGroupToJson(exg stores.ExGroup) ([]byte, error) {
 	r, err := json.Marshal(&exg)
@@ -20,15 +26,14 @@ func FromJsonToExGroup(exGroupEncoded []byte) (stores.ExGroup, error) {
 	return exg, err
 }
 
-func ParseDeleteRequest(request []byte) (int64, string, error) {
-	type DeleteProperties struct {
-		UserId int64  `json:"user_id"`
-		Name   string `json:"name"`
+func ParseExGroupProperties(request []byte) (int64, string, error) {
+	var properties ExGroupPropeties
+	err := json.Unmarshal(request, &properties)
+	if err != nil {
+		return 0, "", err
 	}
-	var id DeleteProperties
-	err := json.Unmarshal(request, &id)
-	return id.UserId, id.Name, err
-}
-func ParseFindByNameRequest(request []byte) (int64, error) {
-	return 0, nil
+	if properties.UserId == 0 || properties.Name == "" {
+		return 0, "", errors.New("empty field")
+	}
+	return properties.UserId, properties.Name, err
 }
