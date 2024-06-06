@@ -11,7 +11,6 @@ var (
 	NotUpdated = errors.New("no rows updated")
 )
 
-// TODO remake store
 // ExGroup struct that is entity for exercise_groups table
 type ExGroup struct {
 	Id     int64  `db:"id" json:"id"`
@@ -23,7 +22,7 @@ type ExGroup struct {
 type ExGroupStore interface {
 	Save(ExGroup) (int64, error)
 	FindById(int64) (ExGroup, error)
-	FindName(userId int64, groupName string) (ExGroup, error)
+	FindByName(userId int64, groupName string) (ExGroup, error)
 	DeleteById(int64) error
 	DeleteByName(userId int64, groupName string) error
 	Update(ExGroup) error

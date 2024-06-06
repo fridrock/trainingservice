@@ -16,24 +16,37 @@ import (
 type ExGroupRouter struct {
 	rs.RConsumer
 	rs.RProducer
-	egs stores.EGS
+	egs stores.ExGroupStore
 }
 
 // each consumer have only one queue, but we can have binding with # symbols
 func NewExGroupRouter(configurer rs.Configurer) *ExGroupRouter {
-	var exGroupRouter ExGroupRouter
-	exGroupRouter.RConsumer = rs.RConsumer{}
-	err := exGroupRouter.RConsumer.CreateChannel(configurer.GetConnection())
+	exGroupRouter := ExGroupRouter{}
+	exGroupRouter.CreateConsumer(configurer)
+	exGroupRouter.CreateProducer(configurer)
+	exGroupRouter.SetEGS(stores.NewEGS(core.CreateConnection()))
+	exGroupRouter.egs = stores.NewEGS(core.CreateConnection())
+	return &exGroupRouter
+}
+
+func (egr *ExGroupRouter) CreateConsumer(configurer rs.Configurer) {
+	egr.RConsumer = rs.RConsumer{}
+	err := egr.RConsumer.CreateChannel(configurer.GetConnection())
 	if err != nil {
 		log.Fatal("error creating RConsumer for ExGroupRouter")
 	}
-	exGroupRouter.RProducer = rs.RProducer{}
-	err = exGroupRouter.RProducer.CreateChannel(configurer.GetConnection())
+}
+
+func (egr *ExGroupRouter) CreateProducer(configurer rs.Configurer) {
+	egr.RProducer = rs.RProducer{}
+	err := egr.RProducer.CreateChannel(configurer.GetConnection())
 	if err != nil {
 		log.Fatal("error creating RProducer for ExGroupRouter")
 	}
-	exGroupRouter.egs = *stores.NewEGS(core.CreateConnection())
-	return &exGroupRouter
+}
+
+func (egr *ExGroupRouter) SetEGS(egs stores.ExGroupStore) {
+	egr.egs = egs
 }
 
 func (egr *ExGroupRouter) Setup() {
