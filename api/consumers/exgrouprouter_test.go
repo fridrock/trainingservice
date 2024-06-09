@@ -17,7 +17,7 @@ var (
 	exGroupRouter  *ExGroupRouter
 )
 
-var (
+const (
 	wrongInput     = "ERROR: wrong input"
 	notDeleted     = "ERROR: no rows deleted"
 	success        = "SUCCESS"
