@@ -3,7 +3,6 @@ package consumers
 import (
 	"context"
 	"database/sql"
-	"log/slog"
 	"testing"
 
 	rs "github.com/fridrock/rabbitsimplier"
@@ -18,7 +17,7 @@ var (
 	exGroupRouter  *ExGroupRouter
 )
 
-const (
+var (
 	wrongInput     = "ERROR: wrong input"
 	notDeleted     = "ERROR: no rows deleted"
 	success        = "SUCCESS"
@@ -44,90 +43,117 @@ func TestMain(m *testing.M) {
 }
 
 func TestAddExGroup(t *testing.T) {
-	clientProducer.PublishMessage(context.Background(),
-		"sport_bot",
-		"trainings.exgroup.create",
-		`{"user_id":1,"name":"Back"}`)
-	d := <-clientConsumer.LastMessageCh
-	if string(d.Body) != `SUCCESS: id:1` {
-		t.Error("wrong result adding exgroup")
+	data := []struct {
+		testName       string
+		message        string
+		resultExpected string
+		errMessage     string
+	}{
+		{
+			"Negative case wrong input",
+			`{"user_id":1`,
+			wrongInput,
+			"error while validation, received: %s",
+		},
+		{
+			"Positive case",
+			`{"user_id":1,"name":"Back"}`,
+			"SUCCESS: id:1",
+			"wrong result adding exgroup, received: %s",
+		},
 	}
-	slog.Info(string(d.Body))
+
+	for _, d := range data {
+		t.Run(d.testName, func(t *testing.T) {
+			clientProducer.PublishMessage(context.Background(),
+				"sport_bot",
+				"trainings.exgroup.create",
+				d.message,
+			)
+			received := string((<-clientConsumer.LastMessageCh).Body)
+			if received != d.resultExpected {
+				t.Errorf(d.errMessage, received)
+			}
+		})
+	}
 }
 
 func TestDeleteByName(t *testing.T) {
-	//negative case
-	clientProducer.PublishMessage(
-		context.Background(),
-		"sport_bot",
-		"trainings.exgroup.delete",
-		`{"user_id":2}`,
-	)
-	d := <-clientConsumer.LastMessageCh
-	if string(d.Body) != wrongInput {
-		t.Errorf("error with wrong input, received: %s", string(d.Body))
+	data := []struct {
+		testName       string
+		message        string
+		resultExpected string
+		errorMessage   string
+	}{
+		{"Negative case wrong input",
+			`{"user_id:2}`,
+			wrongInput,
+			"error with wrong input, received: %s"},
+		{"Negative case no such ex group",
+			`{"user_id":2, "name":"Unexisting"}`,
+			notDeleted,
+			"error with deleting unexisting ex group, received: %s"},
+		{"Positive case",
+			`{"user_id":2, "name":"Back"}`,
+			success,
+			"error with successful deletion of ex group, received: %s"},
 	}
 
-	//negative case, searching for unexisting ex group
-	clientProducer.PublishMessage(
-		context.Background(),
-		"sport_bot",
-		"trainings.exgroup.delete",
-		`{"user_id":2, "name":"Unexisting"}`,
-	)
-	d = <-clientConsumer.LastMessageCh
-	slog.Info(string(d.Body))
-	if string(d.Body) != notDeleted {
-		t.Errorf("error with deleting unexisting ex group, received: %s", string(d.Body))
-	}
-	//positive case
-	clientProducer.PublishMessage(
-		context.Background(),
-		"sport_bot",
-		"trainings.exgroup.delete",
-		`{"user_id":2, "name":"Back"}`,
-	)
-	d = <-clientConsumer.LastMessageCh
-	if string(d.Body) != success {
-		t.Errorf("error with successful deletion of ex group, received: %s", string(d.Body))
+	for _, d := range data {
+		t.Run(d.testName, func(t *testing.T) {
+			clientProducer.PublishMessage(
+				context.Background(),
+				"sport_bot",
+				"trainings.exgroup.delete",
+				d.message,
+			)
+			received := <-clientConsumer.LastMessageCh
+			if string(received.Body) != d.resultExpected {
+				t.Errorf(d.errorMessage, string(received.Body))
+			}
+		})
 	}
 }
 
 func TestFindByName(t *testing.T) {
-	//negative case: wrong input
-	clientProducer.PublishMessage(
-		context.Background(),
-		"sport_bot",
-		"trainings.exgroup.find",
-		`{"user_id":2}`,
-	)
-	d := <-clientConsumer.LastMessageCh
-	slog.Info(string(d.Body))
-	if string(d.Body) != wrongInput {
-		t.Errorf("error with wrong input, received: %s", string(d.Body))
+	data := []struct {
+		testName       string
+		message        string
+		resultExpected string
+		errMessage     string
+	}{
+		{
+			"Negative case wrong input",
+			`{"user_id":2}`,
+			wrongInput,
+			"error with wrong input, received: %s",
+		},
+		{
+			"Negative case no such ex group",
+			`{"user_id":2, "name":"Unexisting"}`,
+			"ERROR: " + sql.ErrNoRows.Error(),
+			"error with finding unexisting ex group, received: %s",
+		},
+		{
+			"Positive case found",
+			`{"user_id":2, "name":"Back"}`,
+			successFinding,
+			"error with successful finding of ex group, received: %s",
+		},
 	}
-	//negative case: unexisting
-	clientProducer.PublishMessage(
-		context.Background(),
-		"sport_bot",
-		"trainings.exgroup.find",
-		`{"user_id":2, "name":"Unexisting"}`,
-	)
-	d = <-clientConsumer.LastMessageCh
-	slog.Info(string(d.Body))
-	if string(d.Body) != "ERROR: "+sql.ErrNoRows.Error() {
-		t.Errorf("error with finding unexisting ex group, received: %s", string(d.Body))
-	}
-	//positive case
-	clientProducer.PublishMessage(
-		context.Background(),
-		"sport_bot",
-		"trainings.exgroup.find",
-		`{"user_id":2, "name":"Back"}`,
-	)
-	d = <-clientConsumer.LastMessageCh
-	slog.Info(string(d.Body))
-	if string(d.Body) != successFinding {
-		t.Errorf("error with successful finding of ex group, received: %s", string(d.Body))
+
+	for _, d := range data {
+		t.Run(d.testName, func(t *testing.T) {
+			clientProducer.PublishMessage(
+				context.Background(),
+				"sport_bot",
+				"trainings.exgroup.find",
+				d.message,
+			)
+			received := string((<-clientConsumer.LastMessageCh).Body)
+			if received != d.resultExpected {
+				t.Errorf(d.errMessage, received)
+			}
+		})
 	}
 }
