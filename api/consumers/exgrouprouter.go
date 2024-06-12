@@ -104,7 +104,7 @@ func (egr *ExGroupRouter) Setup() {
 		egr.RProducer.PublishMessage(context.Background(), "sport_bot", "tgbot.exgroup.delete", "SUCCESS")
 	}))
 
-	//handler for finding exgroup by id
+	//handler for finding exgroup by name
 	dispatcher.RegisterHandler("trainings.exgroup.find", rs.NewHandlerFunc(func(msg amqp091.Delivery) {
 		body := msg.Body
 		userId, name, err := converters.ParseExGroupProperties(body)
@@ -126,8 +126,54 @@ func (egr *ExGroupRouter) Setup() {
 		egr.RProducer.PublishMessage(context.Background(), "sport_bot", "tgbot.exgroup.find", "SUCCESS: "+string(r))
 	}))
 
-	egr.RConsumer.RegisterDispatcher(q, dispatcher)
+	//handler for updating by name
+	dispatcher.RegisterHandler("trainings.exgroup.update", rs.NewHandlerFunc(func(msg amqp091.Delivery) {
+		body := msg.Body
+		updateExGroup, err := converters.ParseUpdateExGroup(body)
+		if err != nil {
+			egr.RProducer.PublishMessage(context.Background(), "sport_bot", "tgbot.exgroup.update", "ERROR: wrong input")
+			return
+		}
 
+		slog.Info(fmt.Sprintf(
+			"request to update ex group with user_id: %d, name: %s, new_name: %s",
+			updateExGroup.UserId,
+			updateExGroup.Name,
+			updateExGroup.NewName))
+
+		err = egr.egs.UpdateByName(updateExGroup.UserId, updateExGroup.Name, updateExGroup.NewName)
+		if err != nil {
+			egr.RProducer.PublishMessage(context.Background(), "sport_bot", "tgbot.exgroup.update", fmt.Sprintf("ERROR: %v", err))
+			return
+		}
+
+		egr.RProducer.PublishMessage(context.Background(), "sport_bot", "tgbot.exgroup.update", "SUCCESS")
+	}))
+
+	//handler for updating by name
+	dispatcher.RegisterHandler("trainings.exgroup.findByUser", rs.NewHandlerFunc(func(msg amqp091.Delivery) {
+		body := msg.Body
+		userId, err := converters.ParseFindByUser(body)
+		if err != nil {
+			egr.RProducer.PublishMessage(context.Background(), "sport_bot", "tgbot.exgroup.update", "ERROR: wrong input")
+			return
+		}
+
+		slog.Info(fmt.Sprintf("request to find by user_id: %d", userId))
+		exGroups, err := egr.egs.FindByUserId(userId)
+		if err != nil {
+			egr.RProducer.PublishMessage(context.Background(), "sport_bot", "tgbot.exgroup.findByUser", fmt.Sprintf("ERROR: %v", err))
+			return
+		}
+		response, err := json.MarshalIndent(exGroups, "", "")
+		if err != nil {
+			egr.RProducer.PublishMessage(context.Background(), "sport_bot", "tgbot.exgroup.findByUser", fmt.Sprintf("ERROR: %v", err))
+			return
+		}
+		egr.RProducer.PublishMessage(context.Background(), "sport_bot", "tgbot.exgroup.findByUser", fmt.Sprintf("SUCCESS: %v", string(response)))
+	}))
+
+	egr.RConsumer.RegisterDispatcher(q, dispatcher)
 }
 
 // Stop - Closure for closing channels of consumer and producer

@@ -42,10 +42,33 @@ func (egss EGSStub) DeleteByName(userId int64, name string) error {
 func (egss EGSStub) Update(group stores.ExGroup) error {
 	return nil
 }
-func (egss EGSStub) UpdateByName(userId int64, name string, updated stores.ExGroup) error {
+func (egss EGSStub) UpdateByName(userId int64, name string, newName string) error {
+	if name == "Unexisting" {
+		return stores.NotUpdated
+	}
 	return nil
 }
 
 func (egss EGSStub) FindByUserId(userId int64) ([]stores.ExGroup, error) {
-	return nil, nil
+	if userId == 0 {
+		return nil, sql.ErrNoRows
+	}
+	groups := []stores.ExGroup{
+		stores.ExGroup{
+			Id:     1,
+			Name:   "Back",
+			UserId: userId,
+		},
+		stores.ExGroup{
+			Id:     2,
+			Name:   "Front",
+			UserId: userId,
+		},
+		stores.ExGroup{
+			Id:     3,
+			Name:   "Chest",
+			UserId: userId,
+		},
+	}
+	return groups, nil
 }

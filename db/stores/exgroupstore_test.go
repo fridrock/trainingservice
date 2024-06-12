@@ -6,21 +6,15 @@ import (
 	"fmt"
 	"log"
 	"log/slog"
-	"path/filepath"
 	"testing"
-	"time"
 
+	"github.com/fridrock/trainingservice/test"
 	"github.com/google/go-cmp/cmp"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
-	"github.com/testcontainers/testcontainers-go"
-	"github.com/testcontainers/testcontainers-go/modules/postgres"
-	"github.com/testcontainers/testcontainers-go/wait"
 )
 
-// TODO remake this running init script from migrations
 var (
-	pgContainer    *postgres.PostgresContainer
 	egs            *EGS
 	defaultExGroup = ExGroup{
 		Name:   "BodyBack",
@@ -28,34 +22,10 @@ var (
 	}
 )
 
-func initPostgresContainer() {
-	ctx := context.Background()
-
-	dbName := "users"
-	dbUser := "user"
-	dbPassword := "password"
-
-	containerCreated, err := postgres.RunContainer(ctx,
-		testcontainers.WithImage("postgres:latest"),
-		postgres.WithInitScripts(filepath.Join("..", "testscripts", "initexgroup.sql")),
-		postgres.WithDatabase(dbName),
-		postgres.WithUsername(dbUser),
-		postgres.WithPassword(dbPassword),
-		testcontainers.WithWaitStrategy(
-			wait.ForLog("database system is ready to accept connections").
-				WithOccurrence(2).
-				WithStartupTimeout(5*time.Second)),
-	)
-	if err != nil {
-		log.Fatalf("failed to start container: %s", err)
-	}
-	pgContainer = containerCreated
-}
-
 // init EGS object, that is tested
 func initEGS() {
 	ctx := context.Background()
-	connString, err := pgContainer.ConnectionString(ctx, "sslmode=disable")
+	connString, err := test.GetDatabaseContainer().ConnectionString(ctx, "sslmode=disable")
 	if err != nil {
 		log.Fatal("error creating connection string" + err.Error())
 	}
@@ -74,19 +44,10 @@ func createDefaultExGroup() (int64, error) {
 // default functionality before and after each test
 func TestMain(m *testing.M) {
 	//setting up
-	if pgContainer == nil {
-		initPostgresContainer()
-	}
 	if egs == nil {
 		initEGS()
 	}
 	m.Run()
-	// removing database container after all tests passed
-	defer func() {
-		if err := pgContainer.Terminate(context.Background()); err != nil {
-			log.Fatalf("failed to terminate container: %s", err)
-		}
-	}()
 }
 func clearTable() {
 	egs.conn.Exec("DELETE FROM exercise_groups")
@@ -222,12 +183,7 @@ func TestEGSUpdate(t *testing.T) {
 }
 func TestEGSUpdateByName(t *testing.T) {
 	//negative case
-	updatedExGroup := ExGroup{
-		Name:   "Updated",
-		UserId: 3,
-		Id:     0,
-	}
-	err := egs.UpdateByName(updatedExGroup.UserId, "NoSuchGroup", updatedExGroup)
+	err := egs.UpdateByName(3, "NoSuchGroup", "updated")
 	if err != nil && err != NotUpdated {
 		t.Error(err)
 	}
@@ -236,19 +192,20 @@ func TestEGSUpdateByName(t *testing.T) {
 	if err != nil {
 		t.Error("error creating exgroup")
 	}
-	updatedExGroup = ExGroup{
-		Name:   "Updated",
-		UserId: 3,
+	updatedExGroup := ExGroup{
 		Id:     result,
+		UserId: 1,
+		Name:   "Updated",
 	}
-	err = egs.UpdateByName(defaultExGroup.UserId, defaultExGroup.Name, updatedExGroup)
+	err = egs.UpdateByName(defaultExGroup.UserId, defaultExGroup.Name, "Updated")
 	if err != nil {
 		t.Fatal(err)
 	}
-	found, err := egs.FindByName(updatedExGroup.UserId, updatedExGroup.Name)
+	found, err := egs.FindByName(defaultExGroup.UserId, "Updated")
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	if diff := cmp.Diff(found, updatedExGroup); diff != "" {
 		t.Fatal(diff)
 	}
