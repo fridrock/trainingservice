@@ -7,9 +7,9 @@ import (
 	"log"
 	"log/slog"
 
-	"github.com/fridrock/auth_service/db/core"
 	rs "github.com/fridrock/rabbitsimplier"
 	"github.com/fridrock/trainingservice/api/utils/converters"
+	"github.com/fridrock/trainingservice/db/core"
 	"github.com/fridrock/trainingservice/db/stores"
 	"github.com/rabbitmq/amqp091-go"
 )
