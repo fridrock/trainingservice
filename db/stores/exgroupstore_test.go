@@ -48,6 +48,7 @@ func TestMain(m *testing.M) {
 		initEGS()
 	}
 	m.Run()
+	defer egs.conn.Close()
 }
 func clearTable() {
 	egs.conn.Exec("DELETE FROM exercise_groups")
