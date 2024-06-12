@@ -26,7 +26,7 @@ type ExGroupStore interface {
 	DeleteById(int64) error
 	DeleteByName(userId int64, groupName string) error
 	Update(ExGroup) error
-	UpdateByName(userId int64, name string, updated ExGroup) error
+	UpdateByName(userId int64, name string, newName string) error
 	FindByUserId(int64) ([]ExGroup, error)
 }
 
@@ -112,9 +112,9 @@ func (egs EGS) Update(updated ExGroup) error {
 
 }
 
-func (egs EGS) UpdateByName(userId int64, name string, updated ExGroup) error {
-	q := `UPDATE exercise_groups SET name=$1, user_id=$2 WHERE user_id=$3 AND name=$4`
-	res, err := egs.conn.Exec(q, updated.Name, updated.UserId, userId, name)
+func (egs EGS) UpdateByName(userId int64, name string, newName string) error {
+	q := `UPDATE exercise_groups SET name=$1 WHERE user_id=$2 AND name=$3`
+	res, err := egs.conn.Exec(q, newName, userId, name)
 	if err != nil {
 		return err
 	}
