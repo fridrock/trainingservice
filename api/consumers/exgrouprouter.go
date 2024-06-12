@@ -155,7 +155,7 @@ func (egr *ExGroupRouter) Setup() {
 		body := msg.Body
 		userId, err := converters.ParseFindByUser(body)
 		if err != nil {
-			egr.RProducer.PublishMessage(context.Background(), "sport_bot", "tgbot.exgroup.update", "ERROR: wrong input")
+			egr.RProducer.PublishMessage(context.Background(), "sport_bot", "tgbot.exgroup.findByUser", "ERROR: wrong input")
 			return
 		}
 

@@ -1,42 +1,67 @@
 package stores
 
 import (
-	"context"
-	"log"
-	"log/slog"
 	"testing"
 
-	"github.com/fridrock/trainingservice/test"
-	"github.com/jmoiron/sqlx"
+	"github.com/google/go-cmp/cmp"
 )
 
-var (
-	ts *TS
-)
-
-func initTs() {
-	ctx := context.Background()
-	connString, err := test.GetDatabaseContainer().ConnectionString(ctx, "sslmode=disable")
+func TestTSStartTrainingFindById(t *testing.T) {
+	id, err := ts.StartTraining(1)
 	if err != nil {
-		log.Fatal("error creating connection string" + err.Error())
+		t.Fatalf("error starting training: %v", err)
 	}
-	conn, err := sqlx.Open("postgres", connString)
+	var empty Training
+	training, err := ts.FindById(id)
 	if err != nil {
-		log.Fatal("error opening connection" + err.Error())
+		t.Fatalf("error getting added training:%v", err)
 	}
-	slog.Info("successful creating of test container")
-	ts = NewTs(conn)
+	if diff := cmp.Diff(empty, training); diff == "" {
+		t.Errorf("got wrong training value:%v", training)
+	}
+	if training.Begins != training.Finish {
+		t.Errorf("finish value isn't equal to begins value")
+	}
+	t.Cleanup(clearTables)
 }
 
-func TestTSMain(m *testing.M) {
-	//setting up ts
-	if ts == nil {
-		initTs()
+func TestTSFinishTraining(t *testing.T) {
+	id, _ := ts.StartTraining(1)
+	err := ts.FinishTraining(1)
+	if err != nil {
+		t.Fatalf("error finishing training: %v", err)
 	}
-	m.Run()
-	defer ts.conn.Close()
+	training, _ := ts.FindById(id)
+	if training.Begins == training.Finish {
+		t.Errorf("finish value didn't change")
+	}
+	t.Cleanup(clearTables)
 }
 
-func TestTSStartTraining(t *testing.T) {
+func TestTSGetLastTraining(t *testing.T) {
+	ts.StartTraining(1)
+	ts.StartTraining(1)
+	lastId, _ := ts.StartTraining(1)
+	lastTraining, err := ts.GetLastTraining(1)
+	if err != nil {
+		t.Fatalf("error getting last training: %v", err)
+	}
+	if lastTraining.Id != lastId {
+		t.Errorf("getting non-last training")
+	}
+	t.Cleanup(clearTables)
+}
 
+func TestTSGetTrainings(t *testing.T) {
+	for i := 0; i < 10; i++ {
+		ts.StartTraining(1)
+		ts.FinishTraining(1)
+	}
+	trainings, err := ts.GetTrainings(1)
+	if err != nil {
+		t.Errorf("error getting trainings of user with id: %d, error: %v", 1, err)
+	}
+	if len(trainings) != 10 {
+		t.Errorf("Getting wrong amount of trainings")
+	}
 }

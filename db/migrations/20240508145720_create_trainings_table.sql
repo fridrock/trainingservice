@@ -4,7 +4,7 @@ CREATE TABLE IF NOT EXISTS trainings(
     id SERIAL PRIMARY KEY,
     user_id INTEGER NOT NULL,
     begins timestamp NOT NULL,
-    finish timestamp NOT NULL
+    finish timestamp 
 );
 
 CREATE TABLE IF NOT EXISTS exercise_groups(

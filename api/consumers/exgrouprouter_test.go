@@ -153,14 +153,8 @@ func TestFindByName(t *testing.T) {
 				d.message,
 			)
 			received := string((<-clientConsumer.LastMessageCh).Body)
-			if d.testName != "Positive case found" && received != d.resultExpected {
+			if received != d.resultExpected {
 				t.Errorf(d.errMessage, received)
-			}
-			if d.testName == "Positive case found" {
-				parts := strings.Split(received, ":")
-				if parts[0] != success {
-					t.Errorf("error getting right result:%v", parts[0])
-				}
 			}
 		})
 	}
@@ -224,13 +218,13 @@ func TestFindByUser(t *testing.T) {
 		},
 		{
 			"Negative case no such user",
-			`{"user_id":0}`,
+			`{"user_id": 1}`,
 			"ERROR: " + sql.ErrNoRows.Error(),
 			"error with updating unexisting user, received: %s",
 		},
 		{
 			"Positive case got groups",
-			`{"user_id":2}`,
+			`{"user_id": 2}`,
 			success,
 			"error with successful getting ex groups, received: %s",
 		},
@@ -245,9 +239,16 @@ func TestFindByUser(t *testing.T) {
 				d.message,
 			)
 			received := string((<-clientConsumer.LastMessageCh).Body)
-			if received != d.resultExpected {
+			if d.testName != "Positive case got groups" && received != d.resultExpected {
 				t.Errorf(d.errMessage, received)
 			}
+			if d.testName == "Positive case got groups" {
+				parts := strings.Split(received, ":")
+				if parts[0] != success {
+					t.Errorf("error getting right result:%v", parts[0])
+				}
+			}
+
 		})
 	}
 }
