@@ -153,7 +153,7 @@ func (egr *ExGroupRouter) Setup() {
 	//handler for updating by name
 	dispatcher.RegisterHandler("trainings.exgroup.findByUser", rs.NewHandlerFunc(func(msg amqp091.Delivery) {
 		body := msg.Body
-		userId, err := converters.ParseFindByUser(body)
+		userId, err := converters.ParseUserID(body)
 		if err != nil {
 			egr.RProducer.PublishMessage(context.Background(), "sport_bot", "tgbot.exgroup.findByUser", "ERROR: wrong input")
 			return

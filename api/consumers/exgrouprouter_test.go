@@ -17,6 +17,7 @@ var (
 	clientConsumer *test.AllMessagesConsumer
 	clientProducer *rs.RProducer
 	exGroupRouter  *ExGroupRouter
+	tRouter        *TrainingRouter
 )
 
 const (
@@ -31,16 +32,25 @@ func TestMain(m *testing.M) {
 	rmqContainer = test.GetRmqContainer()
 	clientProducer = test.GetClientProducer()
 	clientConsumer = test.GetClientConsumer()
+	//ExGroup Setup
 	exGroupRouter = &ExGroupRouter{}
 	exGroupRouter.CreateConsumer(test.GetClientConfigurer())
 	exGroupRouter.CreateProducer(test.GetClientConfigurer())
 	egs := EGSStub{}
 	exGroupRouter.SetEGS(egs)
 	exGroupRouter.Setup()
+	//Training Setup
+	tRouter = &TrainingRouter{}
+	tRouter.CreateConsumer(test.GetClientConfigurer())
+	tRouter.CreateProducer(test.GetClientConfigurer())
+	ts := stores.TrainingStoreStub{}
+	tRouter.SetTS(ts)
+	tRouter.Setup()
 	//running tests
 	m.Run()
 	//tearing down
 	exGroupRouter.Stop()
+	tRouter.Stop()
 	test.Stop()
 }
 

@@ -26,8 +26,14 @@ func TestTSStartTrainingFindById(t *testing.T) {
 }
 
 func TestTSFinishTraining(t *testing.T) {
-	id, _ := ts.StartTraining(1)
+	//negative case
 	err := ts.FinishTraining(1)
+	if err != AllTrainingsFinished {
+		t.Errorf("error fininshing unexisting traning:%v", err)
+	}
+	//positive case
+	id, _ := ts.StartTraining(1)
+	err = ts.FinishTraining(1)
 	if err != nil {
 		t.Fatalf("error finishing training: %v", err)
 	}

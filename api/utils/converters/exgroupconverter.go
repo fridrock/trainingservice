@@ -7,21 +7,6 @@ import (
 	"github.com/fridrock/trainingservice/db/stores"
 )
 
-type ExGroupPropeties struct {
-	UserId int64  `json:"user_id"`
-	Name   string `json:"name"`
-}
-
-type UpdateExGroup struct {
-	UserId  int64  `json:"user_id"`
-	Name    string `json:"name"`
-	NewName string `json:"newname"`
-}
-
-type FindByUser struct {
-	UserId int64 `json:"user_id"`
-}
-
 var (
 	emptyField = errors.New("empty Field")
 )
@@ -40,6 +25,11 @@ func FromJsonToExGroup(exGroupEncoded []byte) (stores.ExGroup, error) {
 	return exg, err
 }
 
+type ExGroupPropeties struct {
+	UserId int64  `json:"user_id"`
+	Name   string `json:"name"`
+}
+
 func ParseExGroupProperties(request []byte) (int64, string, error) {
 	var properties ExGroupPropeties
 	err := json.Unmarshal(request, &properties)
@@ -50,6 +40,12 @@ func ParseExGroupProperties(request []byte) (int64, string, error) {
 		return 0, "", emptyField
 	}
 	return properties.UserId, properties.Name, err
+}
+
+type UpdateExGroup struct {
+	UserId  int64  `json:"user_id"`
+	Name    string `json:"name"`
+	NewName string `json:"newname"`
 }
 
 // TODO refactor
@@ -65,8 +61,12 @@ func ParseUpdateExGroup(request []byte) (updateQuery UpdateExGroup, err error) {
 	return updateQuery, err
 }
 
-func ParseFindByUser(request []byte) (int64, error) {
-	var userIdRequest FindByUser
+type UserID struct {
+	UserId int64 `json:"user_id"`
+}
+
+func ParseUserID(request []byte) (int64, error) {
+	var userIdRequest UserID
 	err := json.Unmarshal(request, &userIdRequest)
 	//TODO write handling this in test
 	if err != nil {
