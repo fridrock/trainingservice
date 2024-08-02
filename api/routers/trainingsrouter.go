@@ -18,7 +18,8 @@ import (
 type TrainingRouter struct {
 	rs.RConsumer
 	rs.RProducer
-	ts stores.TrainingStore
+	ts     stores.TrainingStore
+	routes map[string]func(amqp091.Delivery) string
 }
 
 const EXCHANGE_NAME = "sport_bot"
@@ -58,6 +59,10 @@ func (tr *TrainingRouter) SetTS(ts stores.TrainingStore) {
 
 // Setup - main method, that sets up all routes and handlers for them
 func (tr *TrainingRouter) Setup() {
+	tr.routes = make(map[string]func(amqp091.Delivery) string)
+	tr.routes["start"] = tr.handleStart
+	tr.routes["finish"] = tr.handleFinish
+	tr.routes["get"] = tr.handleGet
 	q, err := tr.RConsumer.CreateQueue()
 	if err != nil {
 		log.Fatal("error creating queue for exgroup consumer")
@@ -68,23 +73,11 @@ func (tr *TrainingRouter) Setup() {
 	}
 	//creating dispatcher
 	dispatcher := rs.NewRDispacher()
-	//handler for starting training
-	dispatcher.RegisterHandler("trainings.training.start", rs.NewHandlerFunc(func(msg amqp091.Delivery) {
-		response := tr.handleStart(msg)
-		tr.sendResponse(response, "start")
-	}))
-
-	//handler for finishing training
-	dispatcher.RegisterHandler("trainings.training.finish", rs.NewHandlerFunc(func(msg amqp091.Delivery) {
-		response := tr.handleFinish(msg)
-		tr.sendResponse(response, "finish")
-	}))
-
-	//handler for getting all trainings
-	dispatcher.RegisterHandler("trainings.training.get", rs.NewHandlerFunc(func(msg amqp091.Delivery) {
-		response := tr.handleGet(msg)
-		tr.sendResponse(response, "get")
-	}))
+	for path, f := range tr.routes {
+		dispatcher.RegisterHandler("trainings.training."+path, rs.NewHandlerFunc(func(msg amqp091.Delivery) {
+			tr.sendResponse(f(msg), path)
+		}))
+	}
 	tr.RConsumer.RegisterDispatcher(q, dispatcher)
 }
 
