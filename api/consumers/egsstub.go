@@ -49,21 +49,21 @@ func (egss EGSStub) UpdateByName(userId int64, name string, newName string) erro
 }
 
 func (egss EGSStub) FindByUserId(userId int64) ([]stores.ExGroup, error) {
-	if userId == 0 {
+	if userId == 1 {
 		return nil, sql.ErrNoRows
 	}
 	groups := []stores.ExGroup{
-		stores.ExGroup{
+		{
 			Id:     1,
 			Name:   "Back",
 			UserId: userId,
 		},
-		stores.ExGroup{
+		{
 			Id:     2,
 			Name:   "Front",
 			UserId: userId,
 		},
-		stores.ExGroup{
+		{
 			Id:     3,
 			Name:   "Chest",
 			UserId: userId,

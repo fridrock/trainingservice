@@ -17,6 +17,7 @@ var (
 	clientConsumer *test.AllMessagesConsumer
 	clientProducer *rs.RProducer
 	exGroupRouter  *ExGroupRouter
+	tRouter        *TrainingRouter
 )
 
 const (
@@ -31,16 +32,25 @@ func TestMain(m *testing.M) {
 	rmqContainer = test.GetRmqContainer()
 	clientProducer = test.GetClientProducer()
 	clientConsumer = test.GetClientConsumer()
+	//ExGroup Setup
 	exGroupRouter = &ExGroupRouter{}
 	exGroupRouter.CreateConsumer(test.GetClientConfigurer())
 	exGroupRouter.CreateProducer(test.GetClientConfigurer())
 	egs := EGSStub{}
 	exGroupRouter.SetEGS(egs)
 	exGroupRouter.Setup()
+	//Training Setup
+	tRouter = &TrainingRouter{}
+	tRouter.CreateConsumer(test.GetClientConfigurer())
+	tRouter.CreateProducer(test.GetClientConfigurer())
+	ts := stores.TrainingStoreStub{}
+	tRouter.SetTS(ts)
+	tRouter.Setup()
 	//running tests
 	m.Run()
 	//tearing down
 	exGroupRouter.Stop()
+	tRouter.Stop()
 	test.Stop()
 }
 
@@ -153,14 +163,8 @@ func TestFindByName(t *testing.T) {
 				d.message,
 			)
 			received := string((<-clientConsumer.LastMessageCh).Body)
-			if d.testName != "Positive case found" && received != d.resultExpected {
+			if received != d.resultExpected {
 				t.Errorf(d.errMessage, received)
-			}
-			if d.testName == "Positive case found" {
-				parts := strings.Split(received, ":")
-				if parts[0] != success {
-					t.Errorf("error getting right result:%v", parts[0])
-				}
 			}
 		})
 	}
@@ -224,13 +228,13 @@ func TestFindByUser(t *testing.T) {
 		},
 		{
 			"Negative case no such user",
-			`{"user_id":0}`,
+			`{"user_id": 1}`,
 			"ERROR: " + sql.ErrNoRows.Error(),
 			"error with updating unexisting user, received: %s",
 		},
 		{
 			"Positive case got groups",
-			`{"user_id":2}`,
+			`{"user_id": 2}`,
 			success,
 			"error with successful getting ex groups, received: %s",
 		},
@@ -245,9 +249,16 @@ func TestFindByUser(t *testing.T) {
 				d.message,
 			)
 			received := string((<-clientConsumer.LastMessageCh).Body)
-			if received != d.resultExpected {
+			if d.testName != "Positive case got groups" && received != d.resultExpected {
 				t.Errorf(d.errMessage, received)
 			}
+			if d.testName == "Positive case got groups" {
+				parts := strings.Split(received, ":")
+				if parts[0] != success {
+					t.Errorf("error getting right result:%v", parts[0])
+				}
+			}
+
 		})
 	}
 }

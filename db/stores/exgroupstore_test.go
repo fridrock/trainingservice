@@ -15,43 +15,45 @@ import (
 )
 
 var (
+	ts             *TS
 	egs            *EGS
+	conn           *sqlx.DB
 	defaultExGroup = ExGroup{
 		Name:   "BodyBack",
 		UserId: 1,
 	}
 )
 
-// init EGS object, that is tested
-func initEGS() {
+func TestMain(m *testing.M) {
+	//setting up ts
+	createConnection()
+	ts = NewTs(conn)
+	egs = NewEGS(conn)
+	m.Run()
+	//tearing down
+	defer conn.Close()
+}
+
+func createConnection() {
 	ctx := context.Background()
 	connString, err := test.GetDatabaseContainer().ConnectionString(ctx, "sslmode=disable")
 	if err != nil {
 		log.Fatal("error creating connection string" + err.Error())
 	}
-	conn, err := sqlx.Open("postgres", connString)
+	connection, err := sqlx.Open("postgres", connString)
 	if err != nil {
 		log.Fatal("error opening connection" + err.Error())
 	}
 	slog.Info("successful creating of test container")
-	egs = NewEGS(conn)
+	conn = connection
 }
-
 func createDefaultExGroup() (int64, error) {
 	return egs.Save(defaultExGroup)
 }
 
-// default functionality before and after each test
-func TestMain(m *testing.M) {
-	//setting up
-	if egs == nil {
-		initEGS()
-	}
-	m.Run()
-	defer egs.conn.Close()
-}
-func clearTable() {
-	egs.conn.Exec("DELETE FROM exercise_groups")
+func clearTables() {
+	conn.Exec("DELETE FROM exercise_groups")
+	conn.Exec("DELETE FROM trainings")
 }
 func TestEGSSaveMethod(t *testing.T) {
 	result, err := createDefaultExGroup()
@@ -59,7 +61,7 @@ func TestEGSSaveMethod(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	t.Cleanup(clearTable)
+	t.Cleanup(clearTables)
 }
 
 func TestEGSFindById(t *testing.T) {
@@ -80,7 +82,7 @@ func TestEGSFindById(t *testing.T) {
 	if found.Name != defaultExGroup.Name || found.UserId != defaultExGroup.UserId {
 		t.Error("got wrong data")
 	}
-	t.Cleanup(clearTable)
+	t.Cleanup(clearTables)
 }
 
 func TestEGSFindByName(t *testing.T) {
@@ -99,7 +101,7 @@ func TestEGSFindByName(t *testing.T) {
 		t.Fatalf("error finding exgroup by name")
 	}
 	slog.Info(string(fmt.Sprintf("successfully found: %#v", &found)))
-	t.Cleanup(clearTable)
+	t.Cleanup(clearTables)
 }
 
 func TestEGSDeleteById(t *testing.T) {
@@ -123,7 +125,7 @@ func TestEGSDeleteById(t *testing.T) {
 		t.Errorf("found some exgroup after deletion: %#v", &found)
 	}
 
-	t.Cleanup(clearTable)
+	t.Cleanup(clearTables)
 }
 
 func TestEGSDeleteByName(t *testing.T) {
@@ -144,7 +146,7 @@ func TestEGSDeleteByName(t *testing.T) {
 		t.Errorf("found some exgroup after deletion: %#v", &found)
 	}
 
-	t.Cleanup(clearTable)
+	t.Cleanup(clearTables)
 }
 
 func TestEGSUpdate(t *testing.T) {
@@ -180,7 +182,7 @@ func TestEGSUpdate(t *testing.T) {
 	if diff := cmp.Diff(found, updatedExGroup); diff != "" {
 		t.Fatal(diff)
 	}
-	t.Cleanup(clearTable)
+	t.Cleanup(clearTables)
 }
 func TestEGSUpdateByName(t *testing.T) {
 	//negative case
@@ -210,7 +212,7 @@ func TestEGSUpdateByName(t *testing.T) {
 	if diff := cmp.Diff(found, updatedExGroup); diff != "" {
 		t.Fatal(diff)
 	}
-	t.Cleanup(clearTable)
+	t.Cleanup(clearTables)
 }
 func TestFindByUserId(t *testing.T) {
 	//negative case

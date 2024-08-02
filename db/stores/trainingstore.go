@@ -10,8 +10,8 @@ import (
 type Training struct {
 	Id     int64     `db:"id" json:"id"`
 	UserId int64     `db:"user_id" json:"user_id"`
-	Begins time.Time `db:"started" json:"begins"`
-	Finish time.Time `db:"finished" json:"finish"`
+	Begins time.Time `db:"begins" json:"begins"`
+	Finish time.Time `db:"finish" json:"finish"`
 }
 
 type TrainingStore interface {
@@ -41,13 +41,13 @@ func (ts TS) StartTraining(userId int64) (id int64, err error) {
 		UserId: userId,
 		Begins: time.Now(),
 	}
-	q := "INSERT INTO trainings(user_id, begins) VALUES ($1, $2) RETURNING id"
+	q := "INSERT INTO trainings(user_id, begins, finish) VALUES ($1, $2, $2) RETURNING id"
 	err = ts.conn.Get(&id, q, training.UserId, training.Begins)
 	return id, err
 }
 
 func (ts TS) FinishTraining(userId int64) error {
-	q := "UPDATE trainings SET finish=$1 WHERE finish IS NULL AND user_id=$2"
+	q := "UPDATE trainings SET finish=$1 WHERE finish=begins AND user_id=$2"
 	res, err := ts.conn.Exec(q, time.Now(), userId)
 	if err != nil {
 		return err
@@ -70,7 +70,7 @@ func (ts TS) FindById(trainingId int64) (Training, error) {
 }
 
 func (ts TS) GetLastTraining(userId int64) (Training, error) {
-	q := "SELECT * FROM trainings WHERE user_id=$1 ORDERED BY begins DESC LIMIT 1"
+	q := "SELECT * FROM trainings WHERE user_id=$1 ORDER BY begins DESC LIMIT 1;"
 	var training Training
 	err := ts.conn.Get(&training, q, userId)
 	return training, err
