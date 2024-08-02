@@ -15,9 +15,8 @@ func (egss EGSStub) FindById(id int64) (stores.ExGroup, error) {
 	var group stores.ExGroup
 	return group, nil
 }
-func (egss EGSStub) FindByName(userId int64, name string) (stores.ExGroup, error) {
-	var group stores.ExGroup
-	var err error = nil
+
+func (egss EGSStub) FindByName(userId int64, name string) (group stores.ExGroup, err error) {
 	if name == "Unexisting" {
 		err = sql.ErrNoRows
 	} else {
