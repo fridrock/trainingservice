@@ -1,4 +1,4 @@
-package consumers
+package routers
 
 import (
 	"context"
@@ -20,6 +20,8 @@ type TrainingRouter struct {
 	rs.RProducer
 	ts stores.TrainingStore
 }
+
+const EXCHANGE_NAME = "sport_bot"
 
 // NewTraningRouter - Default method for creation TrainingRouter, requires rs.Configurer to create channels
 // for consumer and producer
@@ -60,7 +62,7 @@ func (tr *TrainingRouter) Setup() {
 	if err != nil {
 		log.Fatal("error creating queue for exgroup consumer")
 	}
-	err = tr.RConsumer.SetBinding(q, "trainings.training.#", "sport_bot")
+	err = tr.RConsumer.SetBinding(q, "trainings.training.#", EXCHANGE_NAME)
 	if err != nil {
 		log.Fatal("error creating binding for exgroup consumer")
 	}
@@ -68,69 +70,77 @@ func (tr *TrainingRouter) Setup() {
 	dispatcher := rs.NewRDispacher()
 	//handler for starting training
 	dispatcher.RegisterHandler("trainings.training.start", rs.NewHandlerFunc(func(msg amqp091.Delivery) {
-		body := msg.Body
-		userId, err := converters.ParseUserID(body)
-		if err != nil {
-			tr.RProducer.PublishMessage(context.Background(), "sport_bot", "tgbot.training.start", "ERROR: wrong input")
-			return
-		}
-		slog.Info(fmt.Sprintf("request start training with user: %d", userId))
-		trainingId, err := tr.ts.StartTraining(userId)
-		if err != nil {
-			tr.RProducer.PublishMessage(context.Background(),
-				"sport_bot",
-				"tgbot.training.start",
-				fmt.Sprintf("ERROR: error starting training: %v", err))
-			return
-		}
-		tr.RProducer.PublishMessage(context.Background(), "sport_bot", "tgbot.training.start", fmt.Sprintf("SUCCESS: id:%d", trainingId))
+		response := tr.handleStart(msg)
+		tr.sendResponse(response, "start")
 	}))
 
 	//handler for finishing training
 	dispatcher.RegisterHandler("trainings.training.finish", rs.NewHandlerFunc(func(msg amqp091.Delivery) {
-		body := msg.Body
-		userId, err := converters.ParseUserID(body)
-		if err != nil {
-			tr.RProducer.PublishMessage(context.Background(), "sport_bot", "tgbot.training.finish", "ERROR: wrong input")
-			return
-		}
-		slog.Info(fmt.Sprintf("request finish training with user: %d", userId))
-		err = tr.ts.FinishTraining(userId)
-		if err != nil {
-			tr.RProducer.PublishMessage(context.Background(),
-				"sport_bot",
-				"tgbot.training.finish",
-				fmt.Sprintf("ERROR: error finishing training: %v", err))
-			return
-		}
-		tr.RProducer.PublishMessage(context.Background(), "sport_bot", "tgbot.training.finish", "SUCCESS")
+		response := tr.handleFinish(msg)
+		tr.sendResponse(response, "finish")
 	}))
 
 	//handler for getting all trainings
 	dispatcher.RegisterHandler("trainings.training.get", rs.NewHandlerFunc(func(msg amqp091.Delivery) {
-		body := msg.Body
-		userId, err := converters.ParseUserID(body)
-		if err != nil {
-			tr.RProducer.PublishMessage(context.Background(), "sport_bot", "tgbot.training.get", "ERROR: wrong input")
-			return
-		}
-		slog.Info(fmt.Sprintf("request getting trainings with user: %d", userId))
-		trainings, err := tr.ts.GetTrainings(userId)
-		if err != nil {
-			tr.RProducer.PublishMessage(context.Background(),
-				"sport_bot",
-				"tgbot.training.get",
-				fmt.Sprintf("ERROR: error getting trainings: %v", err))
-			return
-		}
-		r, err := json.MarshalIndent(trainings, "", "")
-		if err != nil {
-			tr.RProducer.PublishMessage(context.Background(), "sport_bot", "tgbot.training.get", fmt.Sprintf("ERROR: %v", err))
-			return
-		}
-		tr.RProducer.PublishMessage(context.Background(), "sport_bot", "tgbot.training.get", fmt.Sprintf("SUCCESS: %v", string(r)))
+		response := tr.handleGet(msg)
+		tr.sendResponse(response, "get")
 	}))
 	tr.RConsumer.RegisterDispatcher(q, dispatcher)
+}
+
+func (tr *TrainingRouter) sendResponse(response, path string) {
+	tr.RProducer.PublishMessage(
+		context.Background(),
+		EXCHANGE_NAME,
+		"tgbot.training."+path,
+		response)
+}
+
+// methods, that handles all messages and returns response
+func (tr *TrainingRouter) handleStart(msg amqp091.Delivery) string {
+	body := msg.Body
+	userId, err := converters.ParseUserID(body)
+	if err != nil {
+		return "ERROR: wrong input"
+	}
+	slog.Info(fmt.Sprintf("request start training with user: %d", userId))
+	trainingId, err := tr.ts.StartTraining(userId)
+	if err != nil {
+		return fmt.Sprintf("ERROR: error starting training: %v", err)
+	}
+	return fmt.Sprintf("SUCCESS: id:%d", trainingId)
+}
+
+func (tr *TrainingRouter) handleFinish(msg amqp091.Delivery) string {
+	body := msg.Body
+	userId, err := converters.ParseUserID(body)
+	if err != nil {
+		return "ERROR: wrong input"
+	}
+	slog.Info(fmt.Sprintf("request finish training with user: %d", userId))
+	err = tr.ts.FinishTraining(userId)
+	if err != nil {
+		return fmt.Sprintf("ERROR: error finishing training: %v", err)
+	}
+	return "SUCCESS"
+}
+
+func (tr *TrainingRouter) handleGet(msg amqp091.Delivery) string {
+	body := msg.Body
+	userId, err := converters.ParseUserID(body)
+	if err != nil {
+		return "ERROR: wrong input"
+	}
+	slog.Info(fmt.Sprintf("request getting trainings with user: %d", userId))
+	trainings, err := tr.ts.GetTrainings(userId)
+	if err != nil {
+		return fmt.Sprintf("ERROR: error getting trainings: %v", err)
+	}
+	r, err := json.MarshalIndent(trainings, "", "")
+	if err != nil {
+		return fmt.Sprintf("ERROR: %v", err)
+	}
+	return fmt.Sprintf("SUCCESS: %v", string(r))
 }
 
 // Stop - Closure for closing channels of consumer and producer

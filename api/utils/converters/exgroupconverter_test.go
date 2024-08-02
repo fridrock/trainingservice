@@ -110,7 +110,7 @@ func TestParseFindByUser(t *testing.T) {
 	}
 	for _, d := range data {
 		t.Run(d.testName, func(t *testing.T) {
-			userId, err := ParseFindByUser([]byte(d.query))
+			userId, err := ParseUserID([]byte(d.query))
 			if err != d.expectedError {
 				t.Error(err)
 			}

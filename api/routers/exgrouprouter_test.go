@@ -1,4 +1,4 @@
-package consumers
+package routers
 
 import (
 	"context"
@@ -36,7 +36,7 @@ func TestMain(m *testing.M) {
 	exGroupRouter = &ExGroupRouter{}
 	exGroupRouter.CreateConsumer(test.GetClientConfigurer())
 	exGroupRouter.CreateProducer(test.GetClientConfigurer())
-	egs := EGSStub{}
+	egs := stores.EGSStub{}
 	exGroupRouter.SetEGS(egs)
 	exGroupRouter.Setup()
 	//Training Setup
